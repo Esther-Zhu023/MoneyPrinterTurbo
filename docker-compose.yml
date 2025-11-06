@@ -18,7 +18,7 @@ services:
       dockerfile: Dockerfile
     container_name: "moneyprinterturbo-api"
     ports:
-      - "8081:8080"
+      - "8082:8081"
     command: [ "python3", "main.py" ]
     volumes: *common-volumes
     restart: always
