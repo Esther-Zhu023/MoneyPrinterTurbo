@@ -1,24 +1,43 @@
+# filename: docker-compose.yml
+version: "3.8"
+
+x-common-env: &common-env
+  PEXELS_API_KEYS: "sk-8c6e04e2d7084458959bda3f9576affd"         # 
+  LLM_PROVIDER: "deepseek"    # 改为你实际使用的模型提供商（openai、moonshot、ollama、gemini 等）
+  # SUBTITLE_PROVIDER: "edge" # 可选：字幕提供商，edge 或 whisper
+
 x-common-volumes: &common-volumes
-  - ./:/MoneyPrinterTurbo
+  # 仅挂载必要的配置/资源/模型，避免用整库覆盖容器内代码与依赖
+  - ./config.toml:/MoneyPrinterTurbo/config.toml
+  - ./resource:/MoneyPrinterTurbo/resource
+  - ./models:/MoneyPrinterTurbo/models
 
 services:
   webui:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: "moneyprinterturbo-webui"
+    container_name: moneyprinterturbo-webui
     ports:
-      - "8501:8501"
-    command: [ "streamlit", "run", "./webui/Main.py","--browser.serverAddress=127.0.0.1","--server.enableCORS=True","--browser.gatherUsageStats=False" ]
+      - "8501:8501"  # WebUI 对外端口
+    environment:
+      <<: *common-env
+    command: ["streamlit", "run", "./webui/Main.py", "--browser.serverAddress=0.0.0.0", "--server.enableCORS=True", "--browser.gatherUsageStats=False"]
     volumes: *common-volumes
-    restart: always
+    restart: unless-stopped
+    depends_on:
+      - api
+
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: "moneyprinterturbo-api"
+    container_name: moneyprinterturbo-api
+    # 宿主机 8081 → 容器 8080，避免与其他服务抢占 8080
     ports:
-      - "8082:8081"
-    command: [ "python3", "main.py" ]
+      - "8081:8080"
+    environment:
+      <<: *common-env
+    command: ["python3", "main.py"]
     volumes: *common-volumes
-    restart: always
+    restart: unless-stopped
